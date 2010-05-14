@@ -32,7 +32,7 @@ function RFB(opts) {
     stream.connect(rfb.port, rfb.host);
     
     this.send = function (msg) {
-        stream.send(msg);
+        stream.write(msg);
         return this;
     }
     
@@ -87,7 +87,7 @@ function Parser () {
         if (buffer.length < 1) return;
         var secLen = buffer.take(1).charCodeAt(0);
         if (buffer.length - 1 < secLen) return;
-        var secTypes = buffer.take(secLen).slice(1).split('')
+        var secTypes = buffer.take(1 + secLen).slice(1).split('')
             .map(function (c) { return c.charCodeAt(0) });
         if (secLen == 0) {
             if (buffer.length < 2) return;
@@ -100,8 +100,6 @@ function Parser () {
             'none' : 1
         }[rfb.securityType];
         
-        sys.log(secLen);
-        sys.log(secTypes);
         if (secTypes.indexOf(secNum) < 0) return error(
             'Security type ' + rfb.securityType + ' not supported'
         );
