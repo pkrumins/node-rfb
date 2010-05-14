@@ -118,13 +118,13 @@ function Parser (rfb, buffer) {
                 return error('Server returned error message: ' + msg);
             }
             
-            return initHandshake(rfb, buffer) || initHandshake;
+            return initHandshake() || initHandshake;
         };
     }
     
     function initHandshake () {
         rfb.send(String.fromCharCode(rfb.shared));
-        var fb = getFrameBuffer(rfb, buffer);
+        var fb = getFrameBuffer();
         if (!fb) return;
         rfb.frameBuffer = fb;
     }
