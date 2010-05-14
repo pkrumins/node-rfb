@@ -18,7 +18,7 @@ function RFB(opts) {
     
     var stream = new net.Stream;
     var buffer = new BufferList;
-    var parser = new Parser();
+    var parser = new Parser(rfb, buffer);
     
     stream.addListener('connect', function () {
         stream.write('RFB 003.008\n');
@@ -26,7 +26,7 @@ function RFB(opts) {
     
     stream.addListener('data', function (data) {
         buffer.push(data);
-        parser.parse(rfb,buffer);
+        parser.parse();
     })
     
     stream.connect(rfb.port, rfb.host);
@@ -43,13 +43,13 @@ function RFB(opts) {
 }
 
 exports.Parser = Parser;
-function Parser () {
+function Parser (rfb, buffer) {
     // the active parser rule
     var rule = versionHandshake;
     
     // Takes an rfb object and a BufferList
-    this.parse = function (rfb, buffer) {
-        var r = rule(rfb, buffer);
+    this.parse = function () {
+        var r = rule();
         if (r == _error) rfb.end();
         else if (r) rule = r;
     };
@@ -67,7 +67,7 @@ function Parser () {
         }, 0);
     }
     
-    function versionHandshake (rfb, buffer) {
+    function versionHandshake () {
         if (buffer.length < 12) return;
         var m = buffer.take(12).match(/^RFB (\d{3}\.\d{3})/);
         if (!m) return error(
@@ -80,10 +80,10 @@ function Parser () {
         );
         
         buffer.advance(12);
-        return securityHandshake;
+        return securityHandshake() || securityHandshake;
     }
     
-    function securityHandshake (rfb, buffer) {
+    function securityHandshake () {
         if (buffer.length < 1) return;
         var secLen = buffer.take(1).charCodeAt(0);
         if (buffer.length - 1 < secLen) return;
@@ -107,7 +107,7 @@ function Parser () {
         rfb.send(String.fromCharCode(secNum));
         buffer.advance(1 + secLen);
         
-        return function (rfb, buffer) {
+        return function () {
             if (buffer.length < 4) return;
             var secRes = unpackIntBE(buffer.take(4));
             if (secRes == 0) {
@@ -118,12 +118,19 @@ function Parser () {
                 return error('Server returned error message: ' + msg);
             }
             
-            return initHandshake;
+            return initHandshake(rfb, buffer) || initHandshake;
         };
     }
     
-    function initHandshake (rfb, buffer) {
-        sys.log('init');
+    function initHandshake () {
+        rfb.send(String.fromCharCode(rfb.shared));
+        var fb = getFrameBuffer(rfb, buffer);
+        if (!fb) return;
+        rfb.frameBuffer = fb;
+    }
+    
+    function getFrameBuffer() {
+        sys.log('get fb');
         return;
     }
 }
