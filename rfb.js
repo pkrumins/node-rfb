@@ -118,6 +118,7 @@ function Parser (rfb, buffer) {
                 return error('Server returned error message: ' + msg);
             }
             
+            buffer.advance(4);
             return initHandshake() || initHandshake;
         };
     }
