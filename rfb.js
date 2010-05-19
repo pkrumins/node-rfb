@@ -29,10 +29,12 @@ function RFB(opts) {
         bufferList.push(data);
     })
     
+    stream.setNoDelay();
     stream.connect(rfb.port, rfb.host);
     
     this.send = function (msg) {
-        stream.write(msg);
+        stream.write(msg, 'binary');
+        stream.flush();
         return this;
     }
     
@@ -46,7 +48,7 @@ exports.Parser = Parser;
 function Parser (rfb, bufferList) {
     Binary(bufferList)
         // version handshake
-        .getWord8s('prelude',12)
+        .getBuffer('prelude',12)
         .tap(function (vars) {
             var m = vars.prelude.toString().match(/^RFB (\d{3}\.\d{3})/);
             if (!m) {
@@ -59,6 +61,7 @@ function Parser (rfb, bufferList) {
                     sys.log('Remote version ' + version + ' < 3.008');
                     this.clear();
                 }
+                rfb.send('RFB 003.008\n');
             }
         })
         .flush()
@@ -68,7 +71,7 @@ function Parser (rfb, bufferList) {
             this
                 .clear()
                 .getWord8('msgLen')
-                .getWord8s('msg')
+                .getBuffer('msg','msgLen')
                 .tap(function (vars) {
                     sys.log(
                         'Server returned error in security handshake: '
@@ -77,7 +80,7 @@ function Parser (rfb, bufferList) {
                 })
             ;
         })
-        .getWord8s('secTypes','secLen')
+        .getBuffer('secTypes','secLen')
         .tap(function (vars) {
             // vars.secTypes is a Buffer object; make an array
             var secTypes = [];
@@ -95,15 +98,20 @@ function Parser (rfb, bufferList) {
             }
             rfb.send(String.fromCharCode(secNum));
         })
+        .flush()
         .getWord32be('secRes')
-        .when('secRes', 0, function (vars) {
+        .tap(function (vars) {
+            sys.p(vars);
+            sys.p(vars.secRes);
+        })
+        .unless('secRes', 0, function (vars) {
             sys.log('0 for some reason!');
             this
                 .tap(function (vars) { sys.p(vars.secRes) })
                 .clear()
                 .getWord8('msgLen')
                 .tap(function (vars) { sys.p(vars.msgLen) })
-                .getWord8s('msg')
+                .getBuffer('msg')
                 .tap(function (vars) {
                     sys.log('Security handshake failed with message: '
                         + vars.msg.toString()
@@ -111,9 +119,13 @@ function Parser (rfb, bufferList) {
                 });
             ;
         })
+        .tap(function (vars) {
+            sys.p(vars);
+        })
         .flush()
         // init handshake
         .tap(function (vars) {
+            sys.log('init');
             rfb.send(String.fromCharCode(rfb.shared));
             sys.log('now get framebuffer')
         })
