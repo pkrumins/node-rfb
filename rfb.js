@@ -21,10 +21,6 @@ function RFB(opts) {
     var bufferList = new BufferList;
     var parser = new Parser(rfb, bufferList);
     
-    stream.addListener('connect', function () {
-        stream.write('RFB 003.008\n');
-    });
-    
     stream.addListener('data', function (data) {
         bufferList.push(data);
     })
