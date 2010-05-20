@@ -7,6 +7,15 @@ var Buffer = require('buffer').Buffer;
 var BufferList = require('bufferlist').BufferList;
 var Binary = require('bufferlist/binary').Binary;
 
+var rfbMessages = {
+    setPixelFormat : 0,
+    setEncoding : 2,
+    fbUpdate : 3,
+    keyEvent : 4,
+    pointerEvent : 5,
+    cutText : 6
+};
+
 exports.RFB = RFB;
 function RFB(opts) {
     var rfb = this;
@@ -137,12 +146,9 @@ function Parser (rfb, bufferList) {
         .getWord8('pfRedShift')
         .getWord8('pfGreenShift')
         .getWord8('pfBlueShift')
-        .get({ into : '_', bytes : 3 })
+        .skipBytes(3)
         .getWord32be('nameLength')
         .getBuffer('nameString', 'nameLength')
-        .tap(function (vars) {
-            sys.log(vars.nameString)
-        })
     ;
 }
 
