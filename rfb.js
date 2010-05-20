@@ -6,8 +6,9 @@ var net = require('net');
 var Buffer = require('buffer').Buffer;
 var BufferList = require('bufferlist').BufferList;
 var Binary = require('bufferlist/binary').Binary;
+var Png = require('png').Png;
 
-var rfbMessages = {
+var clientMsgTypes = {
     setPixelFormat : 0,
     setEncoding : 2,
     fbUpdate : 3,
@@ -15,6 +16,21 @@ var rfbMessages = {
     pointerEvent : 5,
     cutText : 6
 };
+
+var serverMsgTypes = {
+    fbUpdate : 0,
+    setColorMap : 1,
+    bell: 2,
+    cutText: 3
+};
+
+function Word8(x) {
+    return String.fromCharCode(x);
+}
+
+function Word16be(x) {
+    return String.fromCharCode(x>>8) + String.fromCharCode(x&0xFF);
+}
 
 exports.RFB = RFB;
 function RFB(opts) {
@@ -47,6 +63,18 @@ function RFB(opts) {
         stream.end();
         return this;
     };
+
+    var msgBuf = [];
+    this.bufferMsg = function (msg) {
+        msgBuf.push(msg);
+        return this;
+    }
+
+    this.sendBuffer = function () {
+        var msg = msgBuf.join('');
+        msgBuf = [];
+        return this.send(msg);
+    }
 }
 
 exports.Parser = Parser;
@@ -101,7 +129,7 @@ function Parser (rfb, bufferList) {
                 sys.log('Security type ' + rfb.securityType + ' not supported');
                 this.clear();
             }
-            rfb.send(String.fromCharCode(secNum));
+            rfb.send(Word8(secNum));
         })
         .flush()
         .getWord32be('secRes')
@@ -130,9 +158,7 @@ function Parser (rfb, bufferList) {
         .flush()
         // init handshake
         .tap(function (vars) {
-            sys.log('init');
-            rfb.send(String.fromCharCode(rfb.shared));
-            sys.log('now get framebuffer')
+            rfb.send(Word8(rfb.shared));
         })
         .getWord16be('fbWidth')
         .getWord16be('fbHeight')
@@ -149,6 +175,37 @@ function Parser (rfb, bufferList) {
         .skipBytes(3)
         .getWord32be('nameLength')
         .getBuffer('nameString', 'nameLength')
+        .flush()
+        .tap(function (vars) {
+            rfb.bufferMsg(Word8(clientMsgTypes.fbUpdate));
+            rfb.bufferMsg(Word8(1));
+            rfb.bufferMsg(Word16be(0));
+            rfb.bufferMsg(Word16be(0));
+            rfb.bufferMsg(Word16be(vars.fbWidth));
+            rfb.bufferMsg(Word16be(vars.fbHeight));
+            rfb.sendBuffer();
+        })
+        .getWord8('serverMsgType')
+        .when('serverMsgType', serverMsgTypes.fbUpdate, function (vars) {
+            this
+                .skipBytes(1)
+                .getWord16be('nrects')
+                .getWord16be('x')
+                .getWord16be('y')
+                .getWord16be('w')
+                .getWord16be('h')
+                .getWord32be('encodingType')
+                .tap(function (vars) {
+                    vars.fbSize = vars.w*vars.h*vars.pfBitsPerPixel/8;
+                })
+                .getBuffer('fb', 'fbSize')
+                .tap(function (vars) {
+                    var png = new Png(vars.fb, vars.w, vars.h);
+                    var fs = require('fs');
+                    fs.writeFileSync('fb.png', png.encode(), 'binary');
+                    sys.log('fb.png written');
+                })
+        })
     ;
 }
 
