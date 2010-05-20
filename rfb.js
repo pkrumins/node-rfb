@@ -125,5 +125,24 @@ function Parser (rfb, bufferList) {
             rfb.send(String.fromCharCode(rfb.shared));
             sys.log('now get framebuffer')
         })
+        .getWord16be('fbWidth')
+        .getWord16be('fbHeight')
+        .getWord8('pfBitsPerPixel') // pf is pixelFormat
+        .getWord8('pfDepth')
+        .getWord8('pfBigEndianFlag')
+        .getWord8('pfTrueColorFlag')
+        .getWord16be('pfRedMax')
+        .getWord16be('pfGreenMax')
+        .getWord16be('pfBlueMax')
+        .getWord8('pfRedShift')
+        .getWord8('pfGreenShift')
+        .getWord8('pfBlueShift')
+        .get({ into : '_', bytes : 3 })
+        .getWord32be('nameLength')
+        .getBuffer('nameString', 'nameLength')
+        .tap(function (vars) {
+            sys.log(vars.nameString)
+        })
     ;
 }
+
