@@ -32,6 +32,9 @@ function Word16be(x) {
     return String.fromCharCode(x>>8) + String.fromCharCode(x&0xFF);
 }
 
+var STATE_INIT = 0;
+var STATE_LOOP = 1;
+
 exports.RFB = RFB;
 function RFB(opts) {
     var rfb = this;
@@ -43,11 +46,21 @@ function RFB(opts) {
     rfb.securityType = opts.securityType || 'none';
     
     var stream = new net.Stream;
-    var bufferList = new BufferList;
-    var parser = new Parser(rfb, bufferList);
+
+    var initBufferList = new BufferList;
+    var initParser = new InitParser(rfb, initBufferList);
+
+    var loopBufferList = new BufferList;
+    var loopParser = new LoopParser(rfb, loopBufferList);
     
+    var state = STATE_INIT;
     stream.addListener('data', function (data) {
-        bufferList.push(data);
+        if (state == STATE_INIT) {
+            initBufferList.push(data);
+        }
+        else if (state == STATE_LOOP) {
+            loopBufferList.push(data);
+        }
     })
     
     stream.setNoDelay();
@@ -55,7 +68,6 @@ function RFB(opts) {
     
     this.send = function (msg) {
         stream.write(msg, 'binary');
-        stream.flush();
         return this;
     }
     
@@ -77,9 +89,8 @@ function RFB(opts) {
     }
 }
 
-exports.Parser = Parser;
-function Parser (rfb, bufferList) {
-    Binary(bufferList)
+function InitParser (rfb, bufferList) {
+    var binary = Binary(bufferList)
         // version handshake
         .getBuffer('prelude',12)
         .tap(function (vars) {
@@ -176,6 +187,11 @@ function Parser (rfb, bufferList) {
         .getWord32be('nameLength')
         .getBuffer('nameString', 'nameLength')
         .flush()
+    ;
+
+    return buffer.vars;
+
+    /*
         .tap(function (vars) {
             rfb.bufferMsg(Word8(clientMsgTypes.fbUpdate));
             rfb.bufferMsg(Word8(1));
@@ -185,6 +201,12 @@ function Parser (rfb, bufferList) {
             rfb.bufferMsg(Word16be(vars.fbHeight));
             rfb.sendBuffer();
         })
+    ;
+    */
+}
+
+function getUpdate(rfb, bufferList) {
+    Binary(bufferList)
         .getWord8('serverMsgType')
         .when('serverMsgType', serverMsgTypes.fbUpdate, function (vars) {
             this
@@ -200,6 +222,9 @@ function Parser (rfb, bufferList) {
                 })
                 .getBuffer('fb', 'fbSize')
                 .tap(function (vars) {
+                    sys.log(vars.w);
+                    sys.log(vars.h);
+                    sys.log(vars.pfBitsPerPixel);
                     var png = new Png(vars.fb, vars.w, vars.h);
                     var fs = require('fs');
                     fs.writeFileSync('fb.png', png.encode(), 'binary');
