@@ -30,7 +30,6 @@ function RFB(opts) {
     
     this.send = function (msg) {
         stream.write(msg, 'binary');
-        stream.flush();
         return this;
     }
     
@@ -96,17 +95,10 @@ function Parser (rfb, bufferList) {
         })
         .flush()
         .getWord32be('secRes')
-        .tap(function (vars) {
-            sys.p(vars);
-            sys.p(vars.secRes);
-        })
         .unless('secRes', 0, function (vars) {
-            sys.log('0 for some reason!');
             this
-                .tap(function (vars) { sys.p(vars.secRes) })
                 .clear()
                 .getWord8('msgLen')
-                .tap(function (vars) { sys.p(vars.msgLen) })
                 .getBuffer('msg')
                 .tap(function (vars) {
                     sys.log('Security handshake failed with message: '
@@ -114,9 +106,6 @@ function Parser (rfb, bufferList) {
                     );
                 });
             ;
-        })
-        .tap(function (vars) {
-            sys.p(vars);
         })
         .flush()
         // init handshake
