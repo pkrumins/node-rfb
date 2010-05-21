@@ -32,9 +32,6 @@ function Word16be(x) {
     return String.fromCharCode(x>>8) + String.fromCharCode(x&0xFF);
 }
 
-var STATE_INIT = 0;
-var STATE_LOOP = 1;
-
 exports.RFB = RFB;
 function RFB(opts) {
     var rfb = this;
@@ -47,20 +44,11 @@ function RFB(opts) {
     
     var stream = new net.Stream;
 
-    var initBufferList = new BufferList;
-    var initParser = new InitParser(rfb, initBufferList);
+    var bufferList = new BufferList;
+    var parser = new Parser(rfb, bufferList);
 
-    var loopBufferList = new BufferList;
-    var loopParser = new LoopParser(rfb, loopBufferList);
-    
-    var state = STATE_INIT;
     stream.addListener('data', function (data) {
-        if (state == STATE_INIT) {
-            initBufferList.push(data);
-        }
-        else if (state == STATE_LOOP) {
-            loopBufferList.push(data);
-        }
+        bufferList.push(data);
     })
     
     stream.setNoDelay();
@@ -89,8 +77,8 @@ function RFB(opts) {
     }
 }
 
-function InitParser (rfb, bufferList) {
-    var binary = Binary(bufferList)
+function Parser (rfb, bufferList) {
+    Binary(bufferList)
         // version handshake
         .getBuffer('prelude',12)
         .tap(function (vars) {
@@ -109,6 +97,7 @@ function InitParser (rfb, bufferList) {
             }
         })
         .flush()
+        .tap(function () { sys.debug('x') })
         // security handshake
         .getWord8('secLen')
         .when('secLen', 0, function (vars) {
@@ -183,15 +172,10 @@ function InitParser (rfb, bufferList) {
         .getWord8('pfRedShift')
         .getWord8('pfGreenShift')
         .getWord8('pfBlueShift')
-        .skipBytes(3)
+        .skip(3)
         .getWord32be('nameLength')
         .getBuffer('nameString', 'nameLength')
         .flush()
-    ;
-
-    return buffer.vars;
-
-    /*
         .tap(function (vars) {
             rfb.bufferMsg(Word8(clientMsgTypes.fbUpdate));
             rfb.bufferMsg(Word8(1));
@@ -201,36 +185,40 @@ function InitParser (rfb, bufferList) {
             rfb.bufferMsg(Word16be(vars.fbHeight));
             rfb.sendBuffer();
         })
-    ;
-    */
-}
-
-function getUpdate(rfb, bufferList) {
-    Binary(bufferList)
-        .getWord8('serverMsgType')
-        .when('serverMsgType', serverMsgTypes.fbUpdate, function (vars) {
+        /*
+        .forever(function (vars) {
             this
-                .skipBytes(1)
-                .getWord16be('nrects')
-                .getWord16be('x')
-                .getWord16be('y')
-                .getWord16be('w')
-                .getWord16be('h')
-                .getWord32be('encodingType')
-                .tap(function (vars) {
-                    vars.fbSize = vars.w*vars.h*vars.pfBitsPerPixel/8;
+                .getWord8('serverMsgType')
+                .tap(function(vars) {
+                    sys.log(vars.serverMsgType);
                 })
-                .getBuffer('fb', 'fbSize')
-                .tap(function (vars) {
-                    sys.log(vars.w);
-                    sys.log(vars.h);
-                    sys.log(vars.pfBitsPerPixel);
-                    var png = new Png(vars.fb, vars.w, vars.h);
-                    var fs = require('fs');
-                    fs.writeFileSync('fb.png', png.encode(), 'binary');
-                    sys.log('fb.png written');
+                .when('serverMsgType', serverMsgTypes.fbUpdate, function (vars) {
+                    this
+                        .skipBytes(1)
+                        .getWord16be('nrects')
+                        .getWord16be('x')
+                        .getWord16be('y')
+                        .getWord16be('w')
+                        .getWord16be('h')
+                        .getWord32be('encodingType')
+                        .tap(function (vars) {
+                            vars.fbSize = vars.w*vars.h*vars.pfBitsPerPixel/8;
+                        })
+                        .getBuffer('fb', 'fbSize')
+                        .tap(function (vars) {
+                            sys.log(vars.w);
+                            sys.log(vars.h);
+                            sys.log(vars.pfBitsPerPixel);
+                            var png = new Png(vars.fb, vars.w, vars.h);
+                            var fs = require('fs');
+                            fs.writeFileSync('fb.png', png.encode(), 'binary');
+                            sys.log('fb.png written');
+                        })
                 })
+                .flush()
+            ;
         })
+        */
     ;
 }
 
