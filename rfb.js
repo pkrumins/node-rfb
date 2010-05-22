@@ -97,7 +97,6 @@ function Parser (rfb, bufferList) {
             }
         })
         .flush()
-        .tap(function () { sys.debug('x') })
         // security handshake
         .getWord8('secLen')
         .when('secLen', 0, function (vars) {
@@ -133,10 +132,6 @@ function Parser (rfb, bufferList) {
         })
         .flush()
         .getWord32be('secRes')
-        .tap(function (vars) {
-            sys.p(vars);
-            sys.p(vars.secRes);
-        })
         .unless('secRes', 0, function (vars) {
             sys.log('0 for some reason!');
             this
@@ -151,9 +146,6 @@ function Parser (rfb, bufferList) {
                     );
                 });
             ;
-        })
-        .tap(function (vars) {
-            sys.p(vars);
         })
         .flush()
         // init handshake
@@ -175,7 +167,6 @@ function Parser (rfb, bufferList) {
         .skip(3)
         .getWord32be('nameLength')
         .getBuffer('nameString', 'nameLength')
-        .flush()
         .tap(function (vars) {
             rfb.bufferMsg(Word8(clientMsgTypes.fbUpdate));
             rfb.bufferMsg(Word8(1));
@@ -185,16 +176,16 @@ function Parser (rfb, bufferList) {
             rfb.bufferMsg(Word16be(vars.fbHeight));
             rfb.sendBuffer();
         })
-        /*
+        .flush()
         .forever(function (vars) {
             this
                 .getWord8('serverMsgType')
                 .tap(function(vars) {
-                    sys.log(vars.serverMsgType);
+                    sys.log('serverMsgType: ' + vars.serverMsgType);
                 })
                 .when('serverMsgType', serverMsgTypes.fbUpdate, function (vars) {
                     this
-                        .skipBytes(1)
+                        .skip(1)
                         .getWord16be('nrects')
                         .getWord16be('x')
                         .getWord16be('y')
@@ -214,11 +205,10 @@ function Parser (rfb, bufferList) {
                             fs.writeFileSync('fb.png', png.encode(), 'binary');
                             sys.log('fb.png written');
                         })
+                    ;
                 })
-                .flush()
             ;
         })
-        */
     ;
 }
 
