@@ -180,30 +180,34 @@ function Parser (rfb, bufferList) {
         .forever(function (vars) {
             this
                 .getWord8('serverMsgType')
-                .tap(function(vars) {
+                .tap(function (vars) {
                     sys.log('serverMsgType: ' + vars.serverMsgType);
                 })
                 .when('serverMsgType', serverMsgTypes.fbUpdate, function (vars) {
                     this
                         .skip(1)
-                        .getWord16be('nrects')
-                        .getWord16be('x')
-                        .getWord16be('y')
-                        .getWord16be('w')
-                        .getWord16be('h')
-                        .getWord32be('encodingType')
+                        .getWord16be('nRects')
                         .tap(function (vars) {
-                            vars.fbSize = vars.w*vars.h*vars.pfBitsPerPixel/8;
+                            sys.log(vars.nRects)
                         })
-                        .getBuffer('fb', 'fbSize')
-                        .tap(function (vars) {
-                            sys.log(vars.w);
-                            sys.log(vars.h);
-                            sys.log(vars.pfBitsPerPixel);
-                            var png = new Png(vars.fb, vars.w, vars.h);
-                            var fs = require('fs');
-                            fs.writeFileSync('fb.png', png.encode(), 'binary');
-                            sys.log('fb.png written');
+                        .repeat('nRects', function (vars) {
+                            this
+                                .getWord16be('x')
+                                .getWord16be('y')
+                                .getWord16be('w')
+                                .getWord16be('h')
+                                .getWord32be('encodingType')
+                                .tap(function (vars) {
+                                    vars.fbSize = vars.w*vars.h*vars.pfBitsPerPixel/8;
+                                })
+                                .getBuffer('fb', 'fbSize')
+                                .tap(function (vars) {
+                                    var png = new Png(vars.fb, vars.w, vars.h);
+                                    var fs = require('fs');
+                                    fs.writeFileSync('fb.png', png.encode(), 'binary');
+                                    sys.log('fb.png written');
+                                })
+                            ;
                         })
                     ;
                 })
