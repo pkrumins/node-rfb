@@ -190,7 +190,7 @@ function Parser (rfb, bufferList) {
                         .tap(function (vars) {
                             sys.log(vars.nRects)
                         })
-                        .repeat('nRects', function (vars) {
+                        .repeat('nRects', function (vars, i) {
                             this
                                 .getWord16be('x')
                                 .getWord16be('y')
@@ -204,13 +204,32 @@ function Parser (rfb, bufferList) {
                                 .tap(function (vars) {
                                     var png = new Png(vars.fb, vars.w, vars.h);
                                     var fs = require('fs');
+                                    /*
+                                    fs.writeFileSync('fb' + i + '.png', png.encode(), 'binary');
+                                    sys.log('fb' + i + '.png written');
+                                    */
                                     fs.writeFileSync('fb.png', png.encode(), 'binary');
                                     sys.log('fb.png written');
                                 })
+                                .flush()
                             ;
                         })
                     ;
                 })
+                /*
+                .when('serverMsgType', serverMsgTypes.setColorMap, function (vars) {
+                    this
+                        .tap(function (vars) { sys.log('setColorMap not implemented yet') })
+                })
+                .when('serverMsgType', serverMsgTypes.bell, function (vars) {
+                    this
+                        .tap(function (vars) { sys.log('bell not implemented yet') })
+                })
+                .when('serverMsgType', serverMsgTypes.cutText, function (vars) {
+                    this
+                        .tap(function (vars) { sys.log('cutText not implemented yet') })
+                })
+                */
             ;
         })
     ;
