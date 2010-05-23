@@ -3,6 +3,7 @@
 
 var sys = require('sys');
 var net = require('net');
+var fs = require('fs');
 var Buffer = require('buffer').Buffer;
 var BufferList = require('bufferlist').BufferList;
 var Binary = require('bufferlist/binary').Binary;
@@ -29,7 +30,7 @@ function Word8(x) {
 }
 
 function Word16be(x) {
-    return String.fromCharCode(x>>8) + String.fromCharCode(x&0xFF);
+    return String.fromCharCode((x>>8)&0xFF) + String.fromCharCode(x&0xFF);
 }
 
 exports.RFB = RFB;
@@ -185,9 +186,10 @@ function Parser (rfb, bufferList) {
                         .skip(1)
                         .getWord16be('nRects')
                         .tap(function (vars) {
-                            sys.log(vars.nRects)
+                            sys.log('nRects: ' + vars.nRects)
                         })
                         .repeat('nRects', function (vars, i) {
+                            sys.log('rawr');
                             this
                                 .getWord16be('x')
                                 .getWord16be('y')
@@ -195,18 +197,27 @@ function Parser (rfb, bufferList) {
                                 .getWord16be('h')
                                 .getWord32be('encodingType')
                                 .tap(function (vars) {
+                                    sys.log([vars.x, vars.y, vars.w, vars.h]);
                                     vars.fbSize = vars.w*vars.h*vars.pfBitsPerPixel/8;
                                 })
                                 .getBuffer('fb', 'fbSize')
                                 .tap(function (vars) {
-                                    var png = new Png(vars.fb, vars.w, vars.h);
-                                    var fs = require('fs');
-                                    /*
-                                    fs.writeFileSync('fb' + i + '.png', png.encode(), 'binary');
-                                    sys.log('fb' + i + '.png written');
+                                    if (vars.counter === undefined) vars.counter = 0;
+
+                                    /* this prepares rgba rect files for rfb test server
+                                        
+                                    var fileName = (vars.counter++).toString() + '-rgba-' +
+                                        vars.x + '-' + vars.y + '-' + vars.w + '-' +
+                                        vars.h + '.dat';
+                                    fs.writeFileSync(fileName, vars.fb.toString('binary'),
+                                        'binary');
+                                    sys.log(fileName + ' written');
                                     */
-                                    fs.writeFileSync('fb.png', png.encode(), 'binary');
-                                    sys.log('fb.png written');
+
+                                    var fileName = 'fb' + vars.counter++ + '.png';
+                                    var png = new Png(vars.fb, vars.w, vars.h);
+                                    fs.writeFileSync(fileName, png.encode(), 'binary');
+                                    sys.log(fileName + ' written');
                                 })
                                 .flush()
                             ;
