@@ -205,9 +205,9 @@ function Parser (rfb, bufferList) {
                                 })
                                 .getBuffer('fb', 'fbSize')
                                 .tap(function (vars) {
-                                    /* this prepares rgba rect files for rfb test server
-
                                     if (vars.counter === undefined) vars.counter = 0;
+
+                                    /* this prepares rgba rect files for rfb test server
                                         
                                     var fileName = (vars.counter++).toString() + '-rgba-' +
                                         vars.x + '-' + vars.y + '-' + vars.w + '-' +
@@ -217,7 +217,7 @@ function Parser (rfb, bufferList) {
                                     sys.log(fileName + ' written');
                                     */
 
-                                    var fileName = 'fb' + i + '.png';
+                                    var fileName = 'fb' + vars.counter++ + '.png';
                                     var png = new Png(vars.fb, vars.w, vars.h);
                                     fs.writeFileSync(fileName, png.encode(), 'binary');
                                     sys.log(fileName + ' written');
