@@ -97,7 +97,6 @@ function Parser (rfb, bufferList) {
             }
         })
         .flush()
-        .tap(function () { sys.debug('x') })
         // security handshake
         .getWord8('secLen')
         .when('secLen', 0, function (vars) {
@@ -165,7 +164,6 @@ function Parser (rfb, bufferList) {
         .skip(3)
         .getWord32be('nameLength')
         .getBuffer('nameString', 'nameLength')
-        .flush()
         .tap(function (vars) {
             rfb.bufferMsg(Word8(clientMsgTypes.fbUpdate));
             rfb.bufferMsg(Word8(1));
@@ -175,40 +173,62 @@ function Parser (rfb, bufferList) {
             rfb.bufferMsg(Word16be(vars.fbHeight));
             rfb.sendBuffer();
         })
-        /*
+        .flush()
         .forever(function (vars) {
             this
                 .getWord8('serverMsgType')
-                .tap(function(vars) {
-                    sys.log(vars.serverMsgType);
+                .tap(function (vars) {
+                    sys.log('serverMsgType: ' + vars.serverMsgType);
                 })
                 .when('serverMsgType', serverMsgTypes.fbUpdate, function (vars) {
                     this
-                        .skipBytes(1)
-                        .getWord16be('nrects')
-                        .getWord16be('x')
-                        .getWord16be('y')
-                        .getWord16be('w')
-                        .getWord16be('h')
-                        .getWord32be('encodingType')
+                        .skip(1)
+                        .getWord16be('nRects')
                         .tap(function (vars) {
-                            vars.fbSize = vars.w*vars.h*vars.pfBitsPerPixel/8;
+                            sys.log(vars.nRects)
                         })
-                        .getBuffer('fb', 'fbSize')
-                        .tap(function (vars) {
-                            sys.log(vars.w);
-                            sys.log(vars.h);
-                            sys.log(vars.pfBitsPerPixel);
-                            var png = new Png(vars.fb, vars.w, vars.h);
-                            var fs = require('fs');
-                            fs.writeFileSync('fb.png', png.encode(), 'binary');
-                            sys.log('fb.png written');
+                        .repeat('nRects', function (vars, i) {
+                            this
+                                .getWord16be('x')
+                                .getWord16be('y')
+                                .getWord16be('w')
+                                .getWord16be('h')
+                                .getWord32be('encodingType')
+                                .tap(function (vars) {
+                                    vars.fbSize = vars.w*vars.h*vars.pfBitsPerPixel/8;
+                                })
+                                .getBuffer('fb', 'fbSize')
+                                .tap(function (vars) {
+                                    var png = new Png(vars.fb, vars.w, vars.h);
+                                    var fs = require('fs');
+                                    /*
+                                    fs.writeFileSync('fb' + i + '.png', png.encode(), 'binary');
+                                    sys.log('fb' + i + '.png written');
+                                    */
+                                    fs.writeFileSync('fb.png', png.encode(), 'binary');
+                                    sys.log('fb.png written');
+                                })
+                                .flush()
+                            ;
                         })
+                    ;
                 })
-                .flush()
+                /*
+                .when('serverMsgType', serverMsgTypes.setColorMap, function (vars) {
+                    this
+                        .tap(function (vars) { sys.log('setColorMap not implemented yet') })
+                })
+                .when('serverMsgType', serverMsgTypes.bell, function (vars) {
+                    this
+                        .tap(function (vars) { sys.log('bell not implemented yet') })
+                })
+                .when('serverMsgType', serverMsgTypes.cutText, function (vars) {
+                    this
+                        .tap(function (vars) { sys.log('cutText not implemented yet') })
+                })
+                */
             ;
         })
-        */
     ;
 }
 
