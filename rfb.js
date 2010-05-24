@@ -108,7 +108,7 @@ function RFB(opts) {
         return this.send(buffer.join(''));
     }
 
-    this.sendKey = function (down, key) {
+    this.sendKey = function (key, down) {
         this.bufferedSend(
             Word8(clientMsgTypes.keyEvent),
             Word8(!!down),
@@ -118,11 +118,11 @@ function RFB(opts) {
     };
     
     this.sendKeyDown = function (key) {
-        this.sendKey(1, key);
+        this.sendKey(key, 1);
     };
     
     this.sendKeyUp = function (key) {
-        this.sendKey(0, key);
+        this.sendKey(key, 0);
     };
     
     this.sendPointer = function (mask, x, y) {
