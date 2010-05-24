@@ -41,6 +41,10 @@ function Word32be(x) {
         String.fromCharCode(x&0xFF);
 }
 
+function Pad8() { return "\x00"; }
+function Pad16() { return "\x00\x00"; }
+function Pad24() { return "\x00\x00\x00"; }
+
 RFB.prototype = new EventEmitter;
 exports.RFB = RFB;
 function RFB(opts) {
@@ -75,8 +79,10 @@ function RFB(opts) {
     };
 
     var msgBuf = [];
-    this.bufferMsg = function (msg) {
-        msgBuf.push(msg);
+    this.bufferMsg = function () {
+        for (var i = 0; i < arguments.length; i++) {
+            msgBuf.push(arguments[i]);
+        }
         return this;
     };
 
@@ -87,10 +93,12 @@ function RFB(opts) {
     };
     
     this.sendKey = function (down, key) {
-        this.bufferMsg(Word8(clientMsgTypes.keyEvent));
-        this.bufferMsg(Word8(!!down));
-        this.bufferMsg(Word16be(0)); // padding
-        this.bufferMsg(Word32be(key));
+        this.bufferMsg(
+            Word8(clientMsgTypes.keyEvent),
+            Word8(!!down),
+            Pad16(),
+            Word32be(key)
+        );
         this.sendBuffer();
     };
     
@@ -103,10 +111,12 @@ function RFB(opts) {
     };
     
     this.sendPointer = function (mask, x, y) {
-        this.bufferMsg(Word8(clientMsgTypes.pointerEvent));
-        this.bufferMsg(Word8(mask));
-        this.bufferMsg(Word16be(x));
-        this.bufferMsg(Word16be(y));
+        this.bufferMsg(
+            Word8(clientMsgTypes.pointerEvent),
+            Word8(mask),
+            Word16be(x),
+            Word16be(y)
+        );
         this.sendBuffer();
     };
 }
@@ -199,12 +209,14 @@ function Parser (rfb, bufferList) {
         .getWord32be('nameLength')
         .getBuffer('nameString', 'nameLength')
         .tap(function (vars) {
-            rfb.bufferMsg(Word8(clientMsgTypes.fbUpdate));
-            rfb.bufferMsg(Word8(1));
-            rfb.bufferMsg(Word16be(0));
-            rfb.bufferMsg(Word16be(0));
-            rfb.bufferMsg(Word16be(vars.fbWidth));
-            rfb.bufferMsg(Word16be(vars.fbHeight));
+            rfb.bufferMsg(
+                Word8(clientMsgTypes.fbUpdate),
+                Word8(1),
+                Word16be(0),
+                Word16be(0),
+                Word16be(vars.fbWidth),
+                Word16be(vars.fbHeight)
+            );
             rfb.sendBuffer();
         })
         .flush()
