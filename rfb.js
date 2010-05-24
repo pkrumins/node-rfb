@@ -189,7 +189,6 @@ function Parser (rfb, bufferList) {
                             sys.log('nRects: ' + vars.nRects)
                         })
                         .repeat('nRects', function (vars, i) {
-                            sys.log('rawr');
                             this
                                 .getWord16be('x')
                                 .getWord16be('y')
@@ -203,7 +202,6 @@ function Parser (rfb, bufferList) {
                                 .getBuffer('fb', 'fbSize')
                                 .tap(function (vars) {
                                     if (vars.counter === undefined) vars.counter = 0;
-
                                     /* this prepares rgba rect files for rfb test server
                                         
                                     var fileName = (vars.counter++).toString() + '-rgba-' +
@@ -213,7 +211,7 @@ function Parser (rfb, bufferList) {
                                         'binary');
                                     sys.log(fileName + ' written');
                                     */
-
+                                    
                                     var fileName = 'fb' + vars.counter++ + '.png';
                                     var png = new Png(vars.fb, vars.w, vars.h);
                                     fs.writeFileSync(fileName, png.encode(), 'binary');
@@ -240,6 +238,7 @@ function Parser (rfb, bufferList) {
                 */
             ;
         })
+        .end()
     ;
 }
 
