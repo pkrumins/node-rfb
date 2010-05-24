@@ -55,6 +55,10 @@ function RFB(opts) {
     rfb.port = opts.port || 5900;
     rfb.shared = opts.shared || false;
     rfb.securityType = opts.securityType || 'none';
+    rfb.errorCallback = opts.errorCallback || 
+        function (exception) {
+            sys.log('Connection error: ' + exception.message + ', errno: ' + exception.errno);
+        };
     
     var stream = new net.Stream;
 
@@ -63,6 +67,10 @@ function RFB(opts) {
 
     stream.addListener('data', function (data) {
         bufferList.push(data);
+    });
+
+    stream.addListener('error', function (exception) {
+        rfb.errorCallback(exception);
     });
     
     stream.setNoDelay();
