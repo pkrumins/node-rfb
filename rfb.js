@@ -52,7 +52,7 @@ function RFB(opts) {
 
     stream.addListener('data', function (data) {
         bufferList.push(data);
-    })
+    });
     
     stream.setNoDelay();
     stream.connect(rfb.port, rfb.host);
@@ -60,7 +60,7 @@ function RFB(opts) {
     this.send = function (msg) {
         stream.write(msg, 'binary');
         return this;
-    }
+    };
     
     this.end = function () {
         stream.end();
@@ -71,13 +71,43 @@ function RFB(opts) {
     this.bufferMsg = function (msg) {
         msgBuf.push(msg);
         return this;
-    }
+    };
 
     this.sendBuffer = function () {
         var msg = msgBuf.join('');
         msgBuf = [];
         return this.send(msg);
-    }
+    };
+    
+    this.sendKey = function (down, key) {
+        var buf = new Buffer(8);
+        buf[0] = 4;
+        buf[1] = !!down + 0;
+        buf[4] = (key >> 24) % 256;
+        buf[5] = (key >> 16) % 256;
+        buf[6] = (key >> 8) % 256;
+        buf[7] = key % 256;
+        stream.write(buf);
+    };
+    
+    this.sendKeyDown = function (key) {
+        this.sendKey(1, key);
+    };
+    
+    this.sendKeyUp = function (key) {
+        this.sendKey(0, key);
+    };
+    
+    this.sendPointer = function (mask, x, y) {
+        var buf = new Buffer(6);
+        buf[0] = 5;
+        buf[1] = mask % 256;
+        buf[2] = x >> 8;
+        buf[3] = x % 256;
+        buf[4] = y >> 8;
+        buf[5] = y % 256;
+        stream.write(buf);
+    };
 }
 
 function Parser (rfb, bufferList) {
