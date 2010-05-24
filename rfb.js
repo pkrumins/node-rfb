@@ -34,6 +34,13 @@ function Word16be(x) {
     return String.fromCharCode((x>>8)&0xFF) + String.fromCharCode(x&0xFF);
 }
 
+function Word32be(x) {
+    return String.fromCharCode((x>>24)&0xFF) +
+        String.fromCharCode((x>>16)&0xFF) +
+        String.fromCharCode((x>>8)&0xFF) +
+        String.fromCharCode(x&0xFF);
+}
+
 RFB.prototype = new EventEmitter;
 exports.RFB = RFB;
 function RFB(opts) {
@@ -80,14 +87,11 @@ function RFB(opts) {
     };
     
     this.sendKey = function (down, key) {
-        var buf = new Buffer(8);
-        buf[0] = 4;
-        buf[1] = !!down + 0;
-        buf[4] = (key >> 24) % 256;
-        buf[5] = (key >> 16) % 256;
-        buf[6] = (key >> 8) % 256;
-        buf[7] = key % 256;
-        stream.write(buf);
+        this.bufferMsg(Word8(clientMsgTypes.keyEvent));
+        this.bufferMsg(Word8(!!down));
+        this.bufferMsg(Word16be(0)); // padding
+        this.bufferMsg(Word32be(key));
+        this.sendBuffer();
     };
     
     this.sendKeyDown = function (key) {
@@ -99,14 +103,11 @@ function RFB(opts) {
     };
     
     this.sendPointer = function (mask, x, y) {
-        var buf = new Buffer(6);
-        buf[0] = 5;
-        buf[1] = mask % 256;
-        buf[2] = x >> 8;
-        buf[3] = x % 256;
-        buf[4] = y >> 8;
-        buf[5] = y % 256;
-        stream.write(buf);
+        this.bufferMsg(Word8(clientMsgTypes.pointerEvent));
+        this.bufferMsg(Word8(mask));
+        this.bufferMsg(Word16be(x));
+        this.bufferMsg(Word16be(y));
+        this.sendBuffer();
     };
 }
 
