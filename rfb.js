@@ -3,11 +3,12 @@
 
 var sys = require('sys');
 var net = require('net');
-var fs = require('fs');
+
 var Buffer = require('buffer').Buffer;
+var EventEmitter = require('events').EventEmitter;
+
 var BufferList = require('bufferlist').BufferList;
 var Binary = require('bufferlist/binary').Binary;
-var Png = require('png').Png;
 
 var clientMsgTypes = {
     setPixelFormat : 0,
@@ -33,6 +34,7 @@ function Word16be(x) {
     return String.fromCharCode((x>>8)&0xFF) + String.fromCharCode(x&0xFF);
 }
 
+RFB.prototype = new EventEmitter;
 exports.RFB = RFB;
 function RFB(opts) {
     var rfb = this;
@@ -178,16 +180,10 @@ function Parser (rfb, bufferList) {
         .forever(function (vars) {
             this
                 .getWord8('serverMsgType')
-                .tap(function (vars) {
-                    sys.log('serverMsgType: ' + vars.serverMsgType);
-                })
                 .when('serverMsgType', serverMsgTypes.fbUpdate, function (vars) {
                     this
                         .skip(1)
                         .getWord16be('nRects')
-                        .tap(function (vars) {
-                            sys.log('nRects: ' + vars.nRects)
-                        })
                         .repeat('nRects', function (vars, i) {
                             this
                                 .getWord16be('x')
@@ -196,26 +192,17 @@ function Parser (rfb, bufferList) {
                                 .getWord16be('h')
                                 .getWord32be('encodingType')
                                 .tap(function (vars) {
-                                    sys.log([vars.x, vars.y, vars.w, vars.h]);
                                     vars.fbSize = vars.w*vars.h*vars.pfBitsPerPixel/8;
                                 })
                                 .getBuffer('fb', 'fbSize')
                                 .tap(function (vars) {
-                                    if (vars.counter === undefined) vars.counter = 0;
-                                    /* this prepares rgba rect files for rfb test server
-                                        
-                                    var fileName = (vars.counter++).toString() + '-rgba-' +
-                                        vars.x + '-' + vars.y + '-' + vars.w + '-' +
-                                        vars.h + '.dat';
-                                    fs.writeFileSync(fileName, vars.fb.toString('binary'),
-                                        'binary');
-                                    sys.log(fileName + ' written');
-                                    */
-                                    
-                                    var fileName = 'fb' + vars.counter++ + '.png';
-                                    var png = new Png(vars.fb, vars.w, vars.h);
-                                    fs.writeFileSync(fileName, png.encode(), 'binary');
-                                    sys.log(fileName + ' written');
+                                    rfb.emit('raw', {
+                                        fb : vars.fb,
+                                        width : vars.w,
+                                        height : vars.h,
+                                        x : vars.x,
+                                        y : vars.y,
+                                    });
                                 })
                                 .flush()
                             ;
