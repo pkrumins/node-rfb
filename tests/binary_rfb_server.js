@@ -173,13 +173,12 @@ var RFBServer = net.createServer(function (stream) {
                     return file.match(/^\d+-rgba-\d+-\d+-\d+-\d+\.dat$/)
                 }).sort();
 
-                if (SEND_TYPE == 'one') {
-                    //for (var i=0; i<rgbaFiles.length; i++) {
-                    for (var i=0; i<1; i++) { // enough to make node-rfb go nuts
+                if (SEND_TYPE == 'one') { // sends the files one-by-one
+                    for (var i=0; i<rgbaFiles.length; i++) {
                         sendFile(rgbaFiles[i]);
                     }
                 }
-                else if (SEND_TYPE == 'all') {
+                else if (SEND_TYPE == 'all') { // sends all the files at once
                     sendAll(rgbaFiles);
                 }
                 else {
