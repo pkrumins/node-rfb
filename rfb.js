@@ -92,14 +92,21 @@ function RFB(opts) {
         return this.send(msg);
     };
     
+    this.bufferedSend = function () {
+        var buffer = [];
+        for (var i = 0; i < arguments.length; i++) {
+            buffer.push(arguments[i]);
+        }
+        return this.send(buffer.join(''));
+    }
+
     this.sendKey = function (down, key) {
-        this.bufferMsg(
+        this.bufferedSend(
             Word8(clientMsgTypes.keyEvent),
             Word8(!!down),
             Pad16(),
             Word32be(key)
         );
-        this.sendBuffer();
     };
     
     this.sendKeyDown = function (key) {
@@ -111,13 +118,12 @@ function RFB(opts) {
     };
     
     this.sendPointer = function (mask, x, y) {
-        this.bufferMsg(
+        this.bufferedSend(
             Word8(clientMsgTypes.pointerEvent),
             Word8(mask),
             Word16be(x),
             Word16be(y)
         );
-        this.sendBuffer();
     };
 }
 
@@ -209,7 +215,7 @@ function Parser (rfb, bufferList) {
         .getWord32be('nameLength')
         .getBuffer('nameString', 'nameLength')
         .tap(function (vars) {
-            rfb.bufferMsg(
+            rfb.bufferedSend(
                 Word8(clientMsgTypes.fbUpdate),
                 Word8(1),
                 Word16be(0),
@@ -217,7 +223,6 @@ function Parser (rfb, bufferList) {
                 Word16be(vars.fbWidth),
                 Word16be(vars.fbHeight)
             );
-            rfb.sendBuffer();
         })
         .flush()
         .forever(function (vars) {
