@@ -76,8 +76,19 @@ function RFB(opts) {
     stream.setNoDelay();
     stream.connect(rfb.port, rfb.host);
     
-    this.send = function (msg) {
-        stream.write(msg, 'binary');
+    this.send = function () {
+        var bList = new BufferList;
+        [].concat.apply([],arguments).forEach(function (arg) {
+            if (arg instanceof Buffer) {
+                bList.push(arg);
+            }
+            else {
+                var buf = new Buffer(arg.length);
+                buf.write(arg, 'binary');
+                bList.push(buf);
+            }
+        });
+        stream.write(bList.join());
         return this;
     };
     
@@ -85,31 +96,9 @@ function RFB(opts) {
         stream.end();
         return this;
     };
-
-    var msgBuf = [];
-    this.bufferMsg = function () {
-        for (var i = 0; i < arguments.length; i++) {
-            msgBuf.push(arguments[i]);
-        }
-        return this;
-    };
-
-    this.sendBuffer = function () {
-        var msg = msgBuf.join('');
-        msgBuf = [];
-        return this.send(msg);
-    };
     
-    this.bufferedSend = function () {
-        var buffer = [];
-        for (var i = 0; i < arguments.length; i++) {
-            buffer.push(arguments[i]);
-        }
-        return this.send(buffer.join(''));
-    }
-
     this.sendKey = function (key, down) {
-        this.bufferedSend(
+        this.send(
             Word8(clientMsgTypes.keyEvent),
             Word8(!!down),
             Pad16(),
@@ -126,7 +115,7 @@ function RFB(opts) {
     };
     
     this.sendPointer = function (mask, x, y) {
-        this.bufferedSend(
+        this.send(
             Word8(clientMsgTypes.pointerEvent),
             Word8(mask),
             Word16be(x),
@@ -223,7 +212,7 @@ function Parser (rfb, bufferList) {
         .getWord32be('nameLength')
         .getBuffer('nameString', 'nameLength')
         .tap(function (vars) {
-            rfb.bufferedSend(
+            rfb.send(
                 Word8(clientMsgTypes.fbUpdate),
                 Word8(1),
                 Word16be(0),
