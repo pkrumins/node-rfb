@@ -257,6 +257,9 @@ function Parser (rfb, bufferList) {
                 this
                 .skip(1)
                 .getWord16be('nRects')
+                .tap(function (vars) {
+                    rfb.emit('startnRects', vars);
+                })
                 .repeat('nRects', function (vars, i) {
                     this
                     .getWord16be('x')
@@ -271,7 +274,7 @@ function Parser (rfb, bufferList) {
                         })
                         .getBuffer('fb', 'fbSize')
                         .tap(function (vars) {
-                            rfb.emit('raw', {
+                            rfb.emit('raw', vars, {
                                 fb : vars.fb,
                                 width : vars.w,
                                 height : vars.h,
@@ -298,6 +301,9 @@ function Parser (rfb, bufferList) {
                         });
                     })
                     .flush();
+                })
+                .tap(function (vars) {
+                    rfb.emit('endnRects', vars);
                 });
             })
             /*
