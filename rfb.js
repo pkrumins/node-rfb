@@ -67,6 +67,9 @@ function RFB(opts) {
         function (exception) {
             sys.log('Connection error: ' + exception.message + ', errno: ' + exception.errno);
         };
+
+    rfb.fbWidth = null;
+    rfb.fbHeight = null;
     
     var stream = new net.Stream;
 
@@ -141,6 +144,25 @@ function RFB(opts) {
             Word16be(y)
         );
     };
+
+    this.fbUpdateRequest = function (x, y, width, height, subscribe) {
+        this.bufferedSend(
+            Word8(clientMsgTypes.fbUpdate),
+            Word8(subscribe),
+            Word16be(x),
+            Word16be(y),
+            Word16be(width),
+            Word16be(height)
+        );
+    }
+
+    this.requestRedrawScreen = function () {
+        this.fbUpdateRequest(0, 0, this.fbWidth, this.fbHeight);
+    };
+
+    this.subscribeToScreenUpdates = function (x, y, width, height) {
+        this.fbUpdateRequest(x, y, width, height);
+    }
 }
 
 function Parser (rfb, bufferList) {
@@ -231,6 +253,10 @@ function Parser (rfb, bufferList) {
         .getWord32be('nameLength')
         .getBuffer('nameString', 'nameLength')
         .tap(function (vars) {
+            rfb.fbWidth = vars.fbWidth;
+            rfb.fbHeight = vars.fbHeight;
+        })
+        .tap(function (vars) {
             rfb.bufferedSend(
                 Word8(clientMsgTypes.setEncodings),
                 Pad8(),
@@ -240,14 +266,8 @@ function Parser (rfb, bufferList) {
             );
         })
         .tap(function (vars) {
-            rfb.bufferedSend(
-                Word8(clientMsgTypes.fbUpdate),
-                Word8(1),
-                Word16be(0),
-                Word16be(0),
-                Word16be(vars.fbWidth),
-                Word16be(vars.fbHeight)
-            );
+            rfb.requestRedrawScreen();
+            rfb.subscribeToScreenUpdates(0, 0, vars.fbWidth, vars.fbHeight)
         })
         .flush()
         .forever(function (vars) {
