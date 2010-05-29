@@ -238,13 +238,13 @@ function Parser (rfb, bufferList) {
             this
             .getWord8('bitsPerPixel')
             .getWord8('depth')
-            .getWord8('bigEndianFlag')
-            .getWord8('trueColorFlag')
+            .getWord8('bigEndian')
+            .getWord8('trueColor')
             .getWord16be('redMax')
             .getWord16be('greenMax')
             .getWord16be('blueMax')
             .getWord8('redShift')
-            .getWord8('geenShift')
+            .getWord8('greenShift')
             .getWord8('blueShift')
         })
         .skip(3)
@@ -254,23 +254,32 @@ function Parser (rfb, bufferList) {
             rfb.fb.width = vars.fb.width;
             rfb.fb.height = vars.fb.height;
 
+            vars.pf.bitsPerPixel = 32; // override server values
+            vars.pf.depth = 24;
+            vars.pf.bigEndian = 0;
+            vars.pf.trueColor = 1;
+            vars.pf.redMax = 0xFF;
+            vars.pf.greenMax = 0xFF;
+            vars.pf.blueMax = 0xFF;
+            vars.pf.redShift = 16;
+            vars.pf.greenShift = 8;
+            vars.pf.blueShift = 0;
+
             rfb.send( // tell the server the format we'd like to receive data in
                 Word8(clientMsgTypes.setPixelFormat),
                 Pad24(),
-                Word8(32), // bits per pixel
-                Word8(24), // depth
-                Word8(0),  // big endian
-                Word8(1),  // true color
-                Word16be(0xFF), // red max
-                Word16be(0xFF), // green max
-                Word16be(0xFF), // blue max
-                Word8(16), // red shift
-                Word8(8), // green shift
-                Word8(0), // blue shift
+                Word8(vars.pf.bitsPerPixel),
+                Word8(vars.pf.depth),
+                Word8(vars.pf.bigEndian),
+                Word8(vars.pf.trueColor),
+                Word16be(vars.pf.redMax),
+                Word16be(vars.pf.greenMax),
+                Word16be(vars.pf.blueMax),
+                Word8(vars.pf.redShift),
+                Word8(vars.pf.greenShift),
+                Word8(vars.pf.blueShift),
                 Pad24()
             );
-
-            vars.pf.bitsPerPixel = 32; // override server's bitsPerPixel
 
             rfb.send( // tell the server our preferred encodings
                 Word8(clientMsgTypes.setEncodings),
