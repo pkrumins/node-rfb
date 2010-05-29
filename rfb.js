@@ -12,7 +12,7 @@ var Binary = require('bufferlist/binary').Binary;
 
 var clientMsgTypes = {
     setPixelFormat : 0,
-    setEncoding : 2,
+    setEncodings : 2,
     fbUpdate : 3,
     keyEvent : 4,
     pointerEvent : 5,
@@ -24,6 +24,14 @@ var serverMsgTypes = {
     setColorMap : 1,
     bell: 2,
     cutText: 3
+};
+
+var encodings = {
+    raw : 0,
+    copyRect : 1,
+    rre : 2,
+    hextile : 3,
+    zrle : 16
 };
 
 function Word8(x) {
@@ -55,10 +63,16 @@ function RFB(opts) {
     rfb.port = opts.port || 5900;
     rfb.shared = opts.shared || false;
     rfb.securityType = opts.securityType || 'none';
-    rfb.errorCallback = opts.errorCallback || 
-        function (exception) {
-            sys.log('Connection error: ' + exception.message + ', errno: ' + exception.errno);
+    rfb.errorCallback = opts.errorCallback
+        || function (exception) {
+            sys.log(
+                'Connection error: ' + exception.message
+                + '\n' + exception.stack
+            );
         };
+    
+    rfb.fbWidth = null;
+    rfb.fbHeight = null;
     
     var stream = new net.Stream;
 
@@ -122,6 +136,25 @@ function RFB(opts) {
             Word16be(y)
         );
     };
+
+    this.fbUpdateRequest = function (x, y, width, height, subscribe) {
+        this.send(
+            Word8(clientMsgTypes.fbUpdate),
+            Word8(subscribe),
+            Word16be(x),
+            Word16be(y),
+            Word16be(width),
+            Word16be(height)
+        );
+    }
+
+    this.requestRedrawScreen = function () {
+        this.fbUpdateRequest(0, 0, this.fbWidth, this.fbHeight);
+    };
+
+    this.subscribeToScreenUpdates = function (x, y, width, height) {
+        this.fbUpdateRequest(x, y, width, height);
+    }
 }
 
 function Parser (rfb, bufferList) {
@@ -212,62 +245,93 @@ function Parser (rfb, bufferList) {
         .getWord32be('nameLength')
         .getBuffer('nameString', 'nameLength')
         .tap(function (vars) {
+            rfb.fbWidth = vars.fbWidth;
+            rfb.fbHeight = vars.fbHeight;
             rfb.send(
-                Word8(clientMsgTypes.fbUpdate),
-                Word8(1),
-                Word16be(0),
-                Word16be(0),
-                Word16be(vars.fbWidth),
-                Word16be(vars.fbHeight)
+                Word8(clientMsgTypes.setEncodings),
+                Pad8(),
+                Word16be(2), // number of encodings following
+                Word32be(encodings.raw),
+                Word32be(encodings.copyRect)
             );
+        })
+        .tap(function (vars) {
+            rfb.requestRedrawScreen();
+            rfb.subscribeToScreenUpdates(0, 0, vars.fbWidth, vars.fbHeight)
         })
         .flush()
         .forever(function (vars) {
             this
-                .getWord8('serverMsgType')
-                .when('serverMsgType', serverMsgTypes.fbUpdate, function (vars) {
+            .getWord8('serverMsgType')
+            .when('serverMsgType', serverMsgTypes.fbUpdate, function (vars) {
+                this
+                .skip(1)
+                .getWord16be('nRects')
+                .tap(function (vars) {
+                    rfb.emit('startRects', vars.nRects);
+                })
+                .repeat('nRects', function (vars, i) {
                     this
-                        .skip(1)
-                        .getWord16be('nRects')
-                        .repeat('nRects', function (vars, i) {
-                            this
-                                .getWord16be('x')
-                                .getWord16be('y')
-                                .getWord16be('w')
-                                .getWord16be('h')
-                                .getWord32be('encodingType')
-                                .tap(function (vars) {
-                                    vars.fbSize = vars.w*vars.h*vars.pfBitsPerPixel/8;
-                                })
-                                .getBuffer('fb', 'fbSize')
-                                .tap(function (vars) {
-                                    rfb.emit('raw', {
-                                        fb : vars.fb,
-                                        width : vars.w,
-                                        height : vars.h,
-                                        x : vars.x,
-                                        y : vars.y,
-                                    });
-                                })
-                                .flush()
-                            ;
+                    .getWord16be('x')
+                    .getWord16be('y')
+                    .getWord16be('w')
+                    .getWord16be('h')
+                    .getWord32be('encodingType')
+                    .when('encodingType', encodings.raw, function (vars) {
+                        this
+                        .tap(function (vars) {
+                            vars.fbSize = vars.w*vars.h*vars.pfBitsPerPixel/8;
                         })
-                    ;
+                        .getBuffer('fb', 'fbSize')
+                        .tap(function (vars) {
+                            rfb.emit('raw', {
+                                fb : vars.fb,
+                                width : vars.w,
+                                height : vars.h,
+                                x : vars.x,
+                                y : vars.y,
+                                nRects : vars.nRect,
+                                index : i
+                            });
+                        });
+                    })
+                    .when('encodingType', encodings.copyRect, function (vars) {
+                        this
+                        .getWord16be('srcX')
+                        .getWord16be('srcY')
+                        .tap(function (vars) {
+                            sys.log('copyRect! vars.srcX ' + vars.srcX);
+                            sys.log('copyRect! vars.srcY ' + vars.srcY);
+                            rfb.emit('copyRect', {
+                                width : vars.w,
+                                height : vars.h,
+                                dstX : vars.x,
+                                dstY : vars.y,
+                                srcX : vars.srcX,
+                                srcY : vars.srcY
+                            });
+                        });
+                    })
+                    .flush();
                 })
-                /*
-                .when('serverMsgType', serverMsgTypes.setColorMap, function (vars) {
-                    this
-                        .tap(function (vars) { sys.log('setColorMap not implemented yet') })
-                })
-                .when('serverMsgType', serverMsgTypes.bell, function (vars) {
-                    this
-                        .tap(function (vars) { sys.log('bell not implemented yet') })
-                })
-                .when('serverMsgType', serverMsgTypes.cutText, function (vars) {
-                    this
-                        .tap(function (vars) { sys.log('cutText not implemented yet') })
-                })
-                */
+                .tap(function (vars) {
+                    rfb.emit('endRects', vars.nRects);
+                });
+            })
+            /*
+            .when('serverMsgType', serverMsgTypes.setColorMap, function (vars) {
+                this
+                    .tap(function (vars) { sys.log('setColorMap not implemented yet') })
+            })
+            .when('serverMsgType', serverMsgTypes.bell, function (vars) {
+                this
+                    .tap(function (vars) { sys.log('bell not implemented yet') })
+            })
+            .when('serverMsgType', serverMsgTypes.cutText, function (vars) {
+                this
+                    .tap(function (vars) { sys.log('cutText not implemented yet') })
+            })
+            */
             ;
         })
         .end()
