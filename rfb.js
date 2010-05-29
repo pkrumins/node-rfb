@@ -275,7 +275,7 @@ function Parser (rfb, bufferList) {
                 .repeat('nRects', function (vars, i) {
                     this.into('rect', function () {
                         this
-                        .tap(function (vars) { vars.emitter = 'unknown' })
+                        .tap(function (vars) { vars.emitter = 'unknownRect' })
                         .into('nRects',vars.nRects)
                         .into('index',i)
                         .getWord16be('x')
