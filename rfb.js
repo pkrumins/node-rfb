@@ -63,10 +63,6 @@ function RFB(opts) {
     rfb.port = opts.port || 5900;
     rfb.shared = opts.shared || false;
     rfb.securityType = opts.securityType || 'none';
-    rfb.errorCallback = opts.errorCallback || 
-        function (exception) {
-            sys.log('Connection error: ' + exception.message + ', errno: ' + exception.errno);
-        };
 
     rfb.fbWidth = null;
     rfb.fbHeight = null;
@@ -81,7 +77,7 @@ function RFB(opts) {
     });
 
     stream.addListener('error', function (exception) {
-        rfb.errorCallback(exception);
+        rfb.emit('error', exception.message);
     });
     
     stream.setNoDelay();
@@ -154,7 +150,7 @@ function RFB(opts) {
             Word16be(width),
             Word16be(height)
         );
-    }
+    };
 
     this.requestRedrawScreen = function () {
         this.fbUpdateRequest(0, 0, this.fbWidth, this.fbHeight);
@@ -162,7 +158,16 @@ function RFB(opts) {
 
     this.subscribeToScreenUpdates = function (x, y, width, height) {
         this.fbUpdateRequest(x, y, width, height);
-    }
+    };
+
+    this.pointer = function (x, y, mask) {
+        this.bufferedSend(
+            Word8(5),
+            Word8(mask),
+            Word16be(x),
+            Word16be(y)
+        );
+    };
 }
 
 function Parser (rfb, bufferList) {
