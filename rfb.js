@@ -71,8 +71,7 @@ function RFB(opts) {
             );
         };
     
-    rfb.fbWidth = null;
-    rfb.fbHeight = null;
+    rfb.fb = { width : null, height : null };
     
     var stream = new net.Stream;
 
@@ -149,7 +148,7 @@ function RFB(opts) {
     }
 
     this.requestRedrawScreen = function () {
-        this.fbUpdateRequest(0, 0, this.fbWidth, this.fbHeight);
+        this.fbUpdateRequest(0, 0, this.fb.width, this.fb.height);
     };
 
     this.subscribeToScreenUpdates = function (x, y, width, height) {
@@ -229,24 +228,27 @@ function Parser (rfb, bufferList) {
         .tap(function (vars) {
             rfb.send(Word8(rfb.shared));
         })
-        .getWord16be('fbWidth')
-        .getWord16be('fbHeight')
-        .getWord8('pfBitsPerPixel') // pf is pixelFormat
-        .getWord8('pfDepth')
-        .getWord8('pfBigEndianFlag')
-        .getWord8('pfTrueColorFlag')
-        .getWord16be('pfRedMax')
-        .getWord16be('pfGreenMax')
-        .getWord16be('pfBlueMax')
-        .getWord8('pfRedShift')
-        .getWord8('pfGreenShift')
-        .getWord8('pfBlueShift')
+        .getWord16be('fb.Width')
+        .getWord16be('fb.height')
+        .into('pf', function () {
+            this
+            .getWord8('bitsPerPixel')
+            .getWord8('depth')
+            .getWord8('bigEndianFlag')
+            .getWord8('trueColorFlag')
+            .getWord16be('redMax')
+            .getWord16be('greenMax')
+            .getWord16be('blueMax')
+            .getWord8('redShift')
+            .getWord8('geenShift')
+            .getWord8('blueShift')
+        })
         .skip(3)
         .getWord32be('nameLength')
         .getBuffer('nameString', 'nameLength')
         .tap(function (vars) {
-            rfb.fbWidth = vars.fbWidth;
-            rfb.fbHeight = vars.fbHeight;
+            rfb.fb.width = vars.fb.width;
+            rfb.fb.height = vars.fb.height;
             rfb.send(
                 Word8(clientMsgTypes.setEncodings),
                 Pad8(),
@@ -257,7 +259,7 @@ function Parser (rfb, bufferList) {
         })
         .tap(function (vars) {
             rfb.requestRedrawScreen();
-            rfb.subscribeToScreenUpdates(0, 0, vars.fbWidth, vars.fbHeight)
+            rfb.subscribeToScreenUpdates(0, 0, vars.fb.width, vars.fb.Height)
         })
         .flush()
         .forever(function (vars) {
@@ -271,46 +273,33 @@ function Parser (rfb, bufferList) {
                     rfb.emit('startRects', vars.nRects);
                 })
                 .repeat('nRects', function (vars, i) {
-                    this
-                    .getWord16be('x')
-                    .getWord16be('y')
-                    .getWord16be('w')
-                    .getWord16be('h')
-                    .getWord32be('encodingType')
-                    .when('encodingType', encodings.raw, function (vars) {
+                    this.into('rect', function () {
                         this
-                        .tap(function (vars) {
-                            vars.fbSize = vars.w*vars.h*vars.pfBitsPerPixel/8;
+                        .tap(function (vars) { vars.emitter = 'unknown' })
+                        .into('nRects',vars.nRects)
+                        .into('index',i)
+                        .getWord16be('x')
+                        .getWord16be('y')
+                        .getWord16be('width')
+                        .getWord16be('height')
+                        .getWord32be('encodingType')
+                        .when('encodingType', encodings.raw, function (vars) {
+                            this
+                            .tap(function (vars) { vars.emitter = 'raw' })
+                            .into('fbSize', vars.rect.width * vars.rect.height
+                                * vars.pf.bitsPerPixel / 8
+                            )
+                            .getBuffer('fb','fbSize')
                         })
-                        .getBuffer('fb', 'fbSize')
+                        .when('encodingType', encodings.copyRect, function (vars) {
+                            this
+                            .tap(function (vars) { vars.emitter = 'copyRect' })
+                            .getWord16be('srcX')
+                            .getWord16be('srcY')
+                        })
                         .tap(function (vars) {
-                            rfb.emit('raw', {
-                                fb : vars.fb,
-                                width : vars.w,
-                                height : vars.h,
-                                x : vars.x,
-                                y : vars.y,
-                                nRects : vars.nRect,
-                                index : i
-                            });
-                        });
-                    })
-                    .when('encodingType', encodings.copyRect, function (vars) {
-                        this
-                        .getWord16be('srcX')
-                        .getWord16be('srcY')
-                        .tap(function (vars) {
-                            sys.log('copyRect! vars.srcX ' + vars.srcX);
-                            sys.log('copyRect! vars.srcY ' + vars.srcY);
-                            rfb.emit('copyRect', {
-                                width : vars.w,
-                                height : vars.h,
-                                dstX : vars.x,
-                                dstY : vars.y,
-                                srcX : vars.srcX,
-                                srcY : vars.srcY
-                            });
-                        });
+                            rfb.emit(vars.emitter,vars.rect);
+                        })
                     })
                     .flush();
                 })
