@@ -75,9 +75,11 @@ function RFB(opts) {
         bufferList.push(data);
     });
 
+    /*
     stream.addListener('error', function (exception) {
         rfb.emit('error', exception.message);
     });
+    */
     
     stream.setNoDelay();
     stream.connect(rfb.port, rfb.host);
@@ -149,7 +151,7 @@ function RFB(opts) {
     };
 
     this.pointer = function (x, y, mask) {
-        this.bufferedSend(
+        this.send(
             Word8(5),
             Word8(mask),
             Word16be(x),
@@ -260,7 +262,6 @@ function Parser (rfb, bufferList) {
             );
         })
         .tap(function (vars) {
-            rfb.requestRedrawScreen();
             rfb.subscribeToScreenUpdates(0, 0, vars.fb.width, vars.fb.Height)
         })
         .flush()
