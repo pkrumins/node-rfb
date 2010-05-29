@@ -232,7 +232,7 @@ function Parser (rfb, bufferList) {
         .tap(function (vars) {
             rfb.send(Word8(rfb.shared));
         })
-        .getWord16be('fb.Width')
+        .getWord16be('fb.width')
         .getWord16be('fb.height')
         .into('pf', function () {
             this
@@ -253,12 +253,31 @@ function Parser (rfb, bufferList) {
         .tap(function (vars) {
             rfb.fb.width = vars.fb.width;
             rfb.fb.height = vars.fb.height;
-            rfb.send(
+
+            rfb.send( // tell the server the format we'd like to receive data in
+                Word8(clientMsgTypes.setPixelFormat),
+                Pad24(),
+                Word8(32), // bits per pixel
+                Word8(24), // depth
+                Word8(0),  // big endian
+                Word8(1),  // true color
+                Word16be(0xFF), // red max
+                Word16be(0xFF), // green max
+                Word16be(0xFF), // blue max
+                Word8(16), // red shift
+                Word8(8), // green shift
+                Word8(0), // blue shift
+                Pad24()
+            );
+
+            vars.pf.bitsPerPixel = 32; // override server's bitsPerPixel
+
+            rfb.send( // tell the server our preferred encodings
                 Word8(clientMsgTypes.setEncodings),
                 Pad8(),
                 Word16be(2), // number of encodings following
-                Word32be(encodings.raw),
-                Word32be(encodings.copyRect)
+                Word32be(encodings.copyRect),
+                Word32be(encodings.raw)
             );
         })
         .tap(function (vars) {
@@ -296,6 +315,7 @@ function Parser (rfb, bufferList) {
                         })
                         .when('encodingType', encodings.copyRect, function (vars) {
                             this
+                            .tap(function (vars) { sys.log('got copyRect'); })
                             .tap(function (vars) { vars.emitter = 'copyRect' })
                             .getWord16be('srcX')
                             .getWord16be('srcY')
@@ -310,7 +330,6 @@ function Parser (rfb, bufferList) {
                     rfb.emit('endRects', vars.nRects);
                 });
             })
-            /*
             .when('serverMsgType', serverMsgTypes.setColorMap, function (vars) {
                 this
                     .tap(function (vars) { sys.log('setColorMap not implemented yet') })
@@ -323,7 +342,6 @@ function Parser (rfb, bufferList) {
                 this
                     .tap(function (vars) { sys.log('cutText not implemented yet') })
             })
-            */
             ;
         })
         .end()
