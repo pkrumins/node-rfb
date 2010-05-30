@@ -31,7 +31,9 @@ var encodings = {
     copyRect : 1,
     rre : 2,
     hextile : 3,
-    zrle : 16
+    zrle : 16,
+    pseudoCursor : -239,
+    pseudoDesktopSize : -223
 };
 
 function Word8(x) {
@@ -284,7 +286,8 @@ function Parser (rfb, bufferList) {
             rfb.send( // tell the server our preferred encodings
                 Word8(clientMsgTypes.setEncodings),
                 Pad8(),
-                Word16be(2), // number of encodings following
+                Word16be(3), // number of encodings following
+                Word32be(encodings.pseudoDesktopSize),
                 Word32be(encodings.copyRect),
                 Word32be(encodings.raw)
             );
@@ -313,7 +316,7 @@ function Parser (rfb, bufferList) {
                         .getWord16be('y')
                         .getWord16be('width')
                         .getWord16be('height')
-                        .getWord32be('encodingType')
+                        .getWord32bes('encodingType')
                         .when('encodingType', encodings.raw, function (vars) {
                             this
                             .tap(function (vars) { vars.emitter = 'raw' })
@@ -328,6 +331,10 @@ function Parser (rfb, bufferList) {
                             .tap(function (vars) { vars.emitter = 'copyRect' })
                             .getWord16be('srcX')
                             .getWord16be('srcY')
+                        })
+                        .when('encodingType', encodings.pseudoDesktopSize, function (vars) {
+                            this
+                            .tap(function (vars) { vars.emitter = 'desktopSize' })
                         })
                         .tap(function (vars) {
                             rfb.emit(vars.emitter,vars.rect);
