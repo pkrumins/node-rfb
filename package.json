@@ -1,0 +1,16 @@
+{
+    "name": "rfb",
+    "version": "0.0.1",
+    "descrption": "Implements the client-side of the rfb protocol that vnc uses",
+    "author": "James Halliday",
+    "directories": { "lib": "./lib" },
+    "main": "./lib/rfb.js",
+    "repository": {
+        "type": "git",
+        "url": "http://github.com/substack/node-rfb.git"
+    },
+    "dependencies": {
+        "bufferlist": "*"
+    },
+    "engine": ["node >=0.1.97"]
+}
