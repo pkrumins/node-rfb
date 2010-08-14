@@ -8,6 +8,7 @@ var Png = require('png').Png;
 var RFB = require('rfb').RFB;
 
 var rfb = new RFB({ port : process.argv[2] || 5900 });
+rfb.requestRedraw();
 
 var counter = 0;
 rfb.addListener('raw', function (raw) {
