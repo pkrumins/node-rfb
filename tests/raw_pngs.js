@@ -12,10 +12,14 @@ rfb.requestRedraw();
 
 var counter = 0;
 rfb.addListener('raw', function (raw) {
-    var png = new Png(raw.fb, raw.width, raw.height);
-    var filename = 'fb-' + counter + '.png';
-    counter ++;
-    
-    fs.writeFileSync(filename, png.encode(), 'binary');
-    sys.log(filename + ' written');
+    var png = new Png(raw.fb, raw.width, raw.height, 'rgb');
+    var filename = 'fb-' + (counter ++) + '.png';
+    png.encode(function (data, error) {
+        if (error) {
+            console.log('Error: ' + error.toString());
+            process.exit(1);
+        }
+        fs.writeFileSync(filename, data, 'binary');
+        sys.log(filename + ' written');
+    });
 });
