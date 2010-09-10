@@ -1,7 +1,7 @@
 {
     "name": "rfb",
     "version": "0.0.5",
-    "descrption": "Implements the client-side of the rfb protocol that vnc uses",
+    "description": "Implements the client-side of the rfb protocol that vnc uses",
     "author": "James Halliday",
     "directories": { "lib": "./lib" },
     "main": "./lib/rfb.js",
