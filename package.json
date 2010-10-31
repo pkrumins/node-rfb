@@ -10,7 +10,8 @@
         "url": "http://github.com/substack/node-rfb.git"
     },
     "dependencies": {
-        "bufferlist": "*"
+        "bufferlist": "*",
+        "put": ">=0.0.1"
     },
     "engine": ["node >=0.1.97"]
 }

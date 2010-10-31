@@ -14,12 +14,13 @@ var counter = 0;
 rfb.addListener('raw', function (raw) {
     var png = new Png(raw.fb, raw.width, raw.height, 'rgb');
     var filename = 'fb-' + (counter ++) + '.png';
-    png.encode(function (data, error) {
-        if (error) {
-            console.log('Error: ' + error.toString());
-            process.exit(1);
+    png.encode(function (data, err) {
+        if (err) {
+            console.log('Error: ' + err.toString());
         }
-        fs.writeFileSync(filename, data, 'binary');
-        sys.log(filename + ' written');
+        else {
+            fs.writeFileSync(filename, data, 'binary');
+            sys.log(filename + ' written');
+        }
     });
 });
