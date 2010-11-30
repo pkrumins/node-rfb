@@ -1,6 +1,6 @@
 {
     "name": "rfb",
-    "version": "0.0.7",
+    "version": "0.0.8",
     "description": "Implements the client-side of the rfb protocol that vnc uses",
     "author": "James Halliday",
     "directories": { "lib": "./lib" },
@@ -11,7 +11,8 @@
     },
     "dependencies": {
         "bufferlist": "*",
-        "put": ">=0.0.1"
+        "put": ">=0.0.1",
+        "des": ">=1.0.0"
     },
     "engine": ["node >=0.1.97"]
 }
