@@ -8,16 +8,19 @@ var fs = require('fs');
 var path = require('path');
 
 function Word8(x) {
-        return String.fromCharCode(x);
+    return String.fromCharCode(x);
 }
 
 function Word16be(x) {
-        return String.fromCharCode((x>>8)&0xFF) + String.fromCharCode(x&0xFF);
+    return String.fromCharCode((x>>8)&0xFF) + String.fromCharCode(x&0xFF);
 }
 
 function Word32be(x) {
-        return String.fromCharCode((x>>24)&0xFF) + String.fromCharCode((x>>16)&0xFF) +
-            String.fromCharCode((x>>8)&0xFF) + String.fromCharCode(x&0xFF);
+    return String.fromCharCode((x>>24)&0xFF)
+        + String.fromCharCode((x>>16)&0xFF)
+        + String.fromCharCode((x>>8)&0xFF)
+        + String.fromCharCode(x&0xFF)
+    ;
 }
 
 var S_EXPECT_RFB = 0;
@@ -194,4 +197,3 @@ var RFBServer = net.createServer(function (stream) {
 }).listen(59000);
 
 sys.log('rfb server on port 59000');
-

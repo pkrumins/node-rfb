@@ -21,8 +21,10 @@ exports.password = function () {
             clearTimeout(to.monitor);
             
             q.stdout.removeListener('data', fn);
-            q.stdin.write('change vnc password\n');
-            q.stdin.write('moo\n');
+            setTimeout(function () {
+                q.stdin.write('change vnc password\n');
+                q.stdin.write('moo\n');
+            }, 50);
             
             setTimeout(function () {
                 var r = new RFB({
