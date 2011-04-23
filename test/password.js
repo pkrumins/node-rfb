@@ -4,17 +4,14 @@ var RFB = require('rfb');
 
 exports.password = function () {
     var port = Math.floor(Math.random() * (Math.pow(2,16) - 10000)) + 10000;
-    var q = qemu(
-        '-vnc', ':' + (port - 5900) + ',password',
-        qemu.img, '-monitor', 'stdio'
-    );
+    var q = qemu({ port : port, password : true });
     
     var to = 'monitor dimensions'
         .split(' ')
         .reduce(function (acc, name) {
             acc[name] = setTimeout(function () {
                 assert.fail('never reached ' + name);
-            }, 10000);
+            }, 60000);
             return acc;
         }, {})
     ;
@@ -41,7 +38,7 @@ exports.password = function () {
                         q.stdin.write('quit\n');
                     }, 500);
                 });
-            }, 5000);
+            }, 15000);
         }
     });
 };

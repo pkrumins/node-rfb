@@ -21,8 +21,14 @@ which.on('exit', function () {
     assert.ok(foundQemu, 'qemu required to run this test');
 });
 
-var exports = module.exports = function () {
-    return spawn('qemu', [].slice.call(arguments))
+var exports = module.exports = function (opts) {
+    return spawn('qemu', [
+        exports.img, '-monitor', 'stdio', '-snapshot',
+        '-vnc',
+            ':' + ((opts.port || 5900) - 5900)
+            + (opts.password ? ',password' : '')
+        ,
+    ]);
 };
 
 exports.img = img;
