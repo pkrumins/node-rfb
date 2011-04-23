@@ -2,12 +2,14 @@ var assert = require('assert');
 var qemu = require('./lib/qemu');
 var RFB = require('rfb');
 var Seq = require('seq');
+var Hash = require('hashish');
 
 exports.rects = function () {
     var port = Math.floor(Math.random() * (Math.pow(2,16) - 10000)) + 10000;
     var q = qemu({ port : port });
+    // console.log('gvncviewer :' + (port - 5900));
     
-    var to = 'dimensions keys'
+    var to = 'dimensions keys mouse'
         .split(' ')
         .reduce(function (acc, name) {
             acc[name] = setTimeout(function () {
@@ -30,20 +32,68 @@ exports.rects = function () {
     }, 10000);
     
     function sendKeys (r) {
-        clearTimeout(to.keys);
-        
-        Seq.ap('echo moo\n'.split(''))
-            .seqEach_(function (cb, key) {
+        Seq.ap('xinit'.split(''))
+            .seqEach_(function (next, key) {
+                r.once('raw', function (rect) {
+                    assert.ok(
+                        rect.width <= 32 && rect.height <= 32,
+                        'rect at (' + rect.x + ',' + rect.y + ') '
+                        + 'is too big: ' + rect.width + 'x' + rect.height
+                    );
+                    setTimeout(next, 250);
+                });
+                
                 setTimeout(function () {
-                    r.once('raw', function (rect) {
-                        setTimeout(cb, 100);
-                    });
-                    
                     r.sendKeyDown(key.charCodeAt(0));
                     r.sendKeyUp(key.charCodeAt(0));
-                }, 250);
+                }, 50);
+            })
+            .seq_(function (next) {
+                clearTimeout(to.keys);
+                
+                // send a newline
+                r.sendKeyDown(65293);
+                r.sendKeyUp(65293);
+                
+                var toResize = setTimeout(function () {
+                    assert.fail('never resized');
+                }, 8000);
+                
+                r.on('desktopSize', function fn (rect) {
+                    if (rect.width === 640 && rect.height === 480) {
+                        clearTimeout(toResize);
+                        setTimeout(next, 3000);
+                    }
+                });
+            })
+            .seq_(function (next) {
+                var x = 300;
+                var y = 300;
+                
+                var toMouse = setTimeout(function () {
+                    assert.fail('mouse never moved');
+                }, 15000);
+                
+                setTimeout(function () {
+                    r.once('raw', function (ref) {
+                        setTimeout(function () {
+                            r.sendPointer(x + 100, y, 0);
+                            r.on('raw', function fn (rect) {
+                                clearTimeout(toMouse);
+                                next();
+                            });
+                        }, 200);
+                    });
+                    
+                    r.sendPointer(x, y, 0);
+                }, 100);
+                
+                r.sendPointer(x-2, y, 0);
+                r.sendPointer(x-1, y, 0);
             })
             .seq(function () {
+                clearTimeout(to.mouse);
+                
                 setTimeout(function () {
                     q.stdin.write('quit\n');
                 }, 500);
