@@ -48,7 +48,7 @@ module.exports = function (opts) {
         size = s;
     });
     
-    var stream = net.createConnection(port, host);
+    var stream = self.stream = net.createConnection(port, host);
     
     stream.setNoDelay();
     
