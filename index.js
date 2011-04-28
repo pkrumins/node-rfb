@@ -2,22 +2,11 @@
 // http://www.realvnc.com/docs/rfbproto.pdf
 
 var EventEmitter = require('events').EventEmitter;
-
 var net = require('net');
-var des = require('des');
-
 var Put = require('put');
 
 var Parser = require('./lib/parser');
-
-var clientMsgTypes = {
-    setPixelFormat : 0,
-    setEncodings : 2,
-    fbUpdate : 3,
-    keyEvent : 4,
-    pointerEvent : 5,
-    cutText : 6
-};
+var constants = require('./lib/constants');
 
 module.exports = function (opts) {
     var self = new EventEmitter;
@@ -63,7 +52,7 @@ module.exports = function (opts) {
         };
     });
     
-    var parser = new Parser(self, stream);
+    var parser = new Parser(self, opts);
     
     self.write = function (buf) {
         if (Buffer.isBuffer(buf)) {
@@ -84,7 +73,7 @@ module.exports = function (opts) {
     
     self.sendKey = function (key, down) {
         Put()
-            .word8(clientMsgTypes.keyEvent)
+            .word8(constants.clientMsgTypes.keyEvent)
             .word8(!!down)
             .pad(2)
             .word32be(key)
@@ -103,7 +92,7 @@ module.exports = function (opts) {
     
     self.sendPointer = function (x, y, mask) {
         Put()
-            .word8(clientMsgTypes.pointerEvent)
+            .word8(constants.clientMsgTypes.pointerEvent)
             .word8(mask)
             .word16be(x)
             .word16be(y)
@@ -114,7 +103,7 @@ module.exports = function (opts) {
     
     self.requestUpdate = function (params) {
         Put()
-            .word8(clientMsgTypes.fbUpdate)
+            .word8(constants.clientMsgTypes.fbUpdate)
             .word8(params.subscribe)
             .word16be(params.x)
             .word16be(params.y)
