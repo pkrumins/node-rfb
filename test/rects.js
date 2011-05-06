@@ -1,13 +1,16 @@
 var assert = require('assert');
+
 var qemu = require('./lib/qemu');
 var RFB = require('rfb');
+
 var Seq = require('seq');
 var Hash = require('hashish');
+var util = require('util');
 
 exports.rects = function () {
     var port = Math.floor(Math.random() * (Math.pow(2,16) - 10000)) + 10000;
     var q = qemu({ port : port });
-    // console.log('gvncviewer :' + (port - 5900));
+    console.log('gvncviewer :' + (port - 5900));
     
     var to = 'dimensions keys mouse'
         .split(' ')
@@ -22,6 +25,14 @@ exports.rects = function () {
     setTimeout(function () {
         var r = new RFB({ port : port });
         
+        r.on('unknownRect', function (rect) {
+            var rep = util.inspect(rect);
+            assert.fail(
+                'unknown rect: '
+                + (rep.length > 100 ? rep.slice(0,100) + '...' : rep)
+            );
+        });
+        
         r.requestRedraw();
         r.dimensions(function (dims) {
             clearTimeout(to.dimensions);
@@ -34,7 +45,9 @@ exports.rects = function () {
     function sendKeys (r) {
         Seq.ap('xinit'.split(''))
             .seqEach_(function (next, key) {
+console.log(key);
                 r.once('raw', function (rect) {
+console.dir([ rect.width, rect.height ].join(' x '));
                     assert.ok(
                         rect.width <= 32 && rect.height <= 32,
                         'rect at (' + rect.x + ',' + rect.y + ') '
@@ -43,10 +56,8 @@ exports.rects = function () {
                     setTimeout(next, 250);
                 });
                 
-                setTimeout(function () {
-                    r.sendKeyDown(key.charCodeAt(0));
-                    r.sendKeyUp(key.charCodeAt(0));
-                }, 50);
+                r.sendKeyDown(key.charCodeAt(0));
+                r.sendKeyUp(key.charCodeAt(0));
             })
             .seq_(function (next) {
                 clearTimeout(to.keys);
