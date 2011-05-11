@@ -10,7 +10,7 @@ var util = require('util');
 exports.rects = function () {
     var port = Math.floor(Math.random() * (Math.pow(2,16) - 10000)) + 10000;
     var q = qemu({ port : port });
-    console.log('gvncviewer :' + (port - 5900));
+    //console.log('gvncviewer :' + (port - 5900));
     
     var to = 'dimensions keys mouse'
         .split(' ')
@@ -33,31 +33,39 @@ exports.rects = function () {
             );
         });
         
-        r.requestRedraw();
         r.dimensions(function (dims) {
             clearTimeout(to.dimensions);
             assert.eql(dims, { width : 720, height : 400 });
-            
-            setTimeout(sendKeys, 5000, r);
         });
+        
+        r.once('raw', function (rect) {
+            assert.eql(rect.width, 720);
+            assert.eql(rect.height, 400);
+            sendKeys(r);
+        });
+        
+        r.requestRedraw();
     }, 10000);
     
     function sendKeys (r) {
         Seq.ap('xinit'.split(''))
             .seqEach_(function (next, key) {
-console.log(key);
-                r.once('raw', function (rect) {
-console.dir([ rect.width, rect.height ].join(' x '));
+                r.once('raw', function fn (rect) {
                     assert.ok(
-                        rect.width <= 32 && rect.height <= 32,
+                        rect.width <= 32 && rect.height <= 32
+                        && rect.width > 0 && rect.height > 0,
                         'rect at (' + rect.x + ',' + rect.y + ') '
-                        + 'is too big: ' + rect.width + 'x' + rect.height
+                        + 'is an unexpected size: '
+                        + rect.width + 'x' + rect.height
                     );
+                    
                     setTimeout(next, 250);
                 });
                 
-                r.sendKeyDown(key.charCodeAt(0));
-                r.sendKeyUp(key.charCodeAt(0));
+                setTimeout(function () {
+                    r.sendKeyDown(key.charCodeAt(0));
+                    r.sendKeyUp(key.charCodeAt(0));
+                }, 50);
             })
             .seq_(function (next) {
                 clearTimeout(to.keys);

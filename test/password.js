@@ -32,6 +32,11 @@ exports.password = function () {
                     password : 'moo',
                     securityType : 'vnc',
                 });
+                
+                r.on('unknownRect', function () {
+                    assert.fail('caught on unknownRect');
+                });
+                
                 r.requestRedraw();
                 r.dimensions(function (dims) {
                     clearTimeout(to.dimensions);
