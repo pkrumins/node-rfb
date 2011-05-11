@@ -76,7 +76,7 @@ exports.rects = function () {
                 
                 var toResize = setTimeout(function () {
                     assert.fail('never resized');
-                }, 8000);
+                }, 15000);
                 
                 r.on('desktopSize', function fn (rect) {
                     if (rect.width === 640 && rect.height === 480) {

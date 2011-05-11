@@ -12,12 +12,14 @@
         "url": "http://github.com/substack/node-rfb.git"
     },
     "dependencies": {
-        "binary": ">=0.2.x",
-        "put": "=0.0.x",
+        "binary": "=0.2.x",
+        "put": ">=0.0.5 <0.1",
         "des": "=1.0.x"
     },
     "devDependencies": {
-        "expresso" : "=0.7.x"
+        "expresso" : "=0.7.x",
+        "seq" : ">=0.2.5 <0.3",
+        "hashish" : ">=0.0.2 <0.1",
     },
     "scripts" : {
         "test" : "expresso"
