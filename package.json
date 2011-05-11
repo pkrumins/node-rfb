@@ -19,7 +19,7 @@
     "devDependencies": {
         "expresso" : "=0.7.x",
         "seq" : ">=0.2.5 <0.3",
-        "hashish" : ">=0.0.2 <0.1",
+        "hashish" : ">=0.0.2 <0.1"
     },
     "scripts" : {
         "test" : "expresso"
