@@ -1,7 +1,8 @@
 var assert = require('assert');
 
 var qemu = require('./lib/qemu');
-var RFB = require('rfb');
+var rfb = require('rfb');
+var png = require('png');
 
 var Seq = require('seq');
 var Hash = require('hashish');
@@ -10,7 +11,7 @@ var util = require('util');
 exports.rects = function () {
     var port = Math.floor(Math.random() * (Math.pow(2,16) - 10000)) + 10000;
     var q = qemu({ port : port });
-    //console.log('gvncviewer :' + (port - 5900));
+    console.log('gvncviewer :' + (port - 5900));
     
     var to = 'dimensions keys mouse'
         .split(' ')
@@ -22,8 +23,10 @@ exports.rects = function () {
         }, {})
     ;
     
+    
+    
     setTimeout(function () {
-        var r = new RFB({ port : port });
+        var r = new rfb({ port : port });
         
         r.on('unknownRect', function (rect) {
             var rep = util.inspect(rect);
@@ -78,14 +81,24 @@ exports.rects = function () {
                     assert.fail('never resized');
                 }, 15000);
                 
-                r.on('desktopSize', function fn (rect) {
-                    if (rect.width === 640 && rect.height === 480) {
-                        clearTimeout(toResize);
-                        setTimeout(next, 3000);
-                    }
+                r.once('desktopSize', function (dims) {
+                    clearTimeout(toResize);
+                    
+                    assert.equal(dims.width, 640);
+                    assert.equal(dims.height, 480);
+                    
+                    var stack = new png.DynamicPngStack('bgr');
+                    
+                    r.on('raw', function (rect) {
+                        stack.push(
+                            rect.fb, rect.x, rect.y, rect.width, rect.height
+                        );
+                    });
+                    
+                    setTimeout(next.ok.bind(null, stack), 4000);
                 });
             })
-            .seq_(function (next) {
+            .seq_(function (next, stack) {
                 var x = 300;
                 var y = 300;
                 
@@ -99,7 +112,7 @@ exports.rects = function () {
                             r.sendPointer(x + 100, y, 0);
                             r.on('raw', function fn (rect) {
                                 clearTimeout(toMouse);
-                                next();
+                                next.ok(stack);
                             });
                         }, 200);
                     });
@@ -110,8 +123,20 @@ exports.rects = function () {
                 r.sendPointer(x-2, y, 0);
                 r.sendPointer(x-1, y, 0);
             })
-            .seq(function () {
+            .seq(function (stack) {
                 clearTimeout(to.mouse);
+                
+                stack.encode(function (data, err) {
+                    if (err) assert.fail(err);
+                    else {
+                        var n = Math.floor(Math.random() * Math.pow(2,32));
+                        var tmpfile = '/tmp/node-rfb_' + n.toString(16) + '.png';
+                        fs.writeFile(tmpfile, data, function (err) {
+                            if (err) assert.fail(err)
+                            else console.log('Verify the output at ' + tmpfile)
+                        });
+                    }
+                });
                 
                 setTimeout(function () {
                     q.stdin.write('quit\n');
