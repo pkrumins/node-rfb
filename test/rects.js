@@ -88,15 +88,20 @@ exports.rects = function () {
                     assert.equal(dims.width, 640);
                     assert.equal(dims.height, 480);
                     
-                    var stack = new png.DynamicPngStack('bgr');
+                    var stack = null;
                     
                     r.on('raw', function (rect) {
+                        assert.equal(rect.bitsPerPixel, 32);
+                        if (!stack) stack = new png.DynamicPngStack('bgra');
+                        
                         stack.push(
                             rect.fb, rect.x, rect.y, rect.width, rect.height
                         );
                     });
                     
-                    setTimeout(next.ok.bind(null, stack), 4000);
+                    setTimeout(function () {
+                        next.ok(stack);
+                    }, 4000);
                 });
             })
             .seq_(function (next, stack) {
