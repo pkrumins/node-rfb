@@ -3,6 +3,7 @@ var assert = require('assert');
 var qemu = require('./lib/qemu');
 var rfb = require('rfb');
 var png = require('png');
+var fs = require('fs');
 
 var Seq = require('seq');
 var Hash = require('hashish');
@@ -11,7 +12,7 @@ var util = require('util');
 exports.rects = function () {
     var port = Math.floor(Math.random() * (Math.pow(2,16) - 10000)) + 10000;
     var q = qemu({ port : port });
-    console.log('gvncviewer :' + (port - 5900));
+    console.log('# gvncviewer :' + (port - 5900));
     
     var to = 'dimensions keys mouse'
         .split(' ')
@@ -126,16 +127,12 @@ exports.rects = function () {
             .seq(function (stack) {
                 clearTimeout(to.mouse);
                 
-                stack.encode(function (data, err) {
-                    if (err) assert.fail(err);
-                    else {
-                        var n = Math.floor(Math.random() * Math.pow(2,32));
-                        var tmpfile = '/tmp/node-rfb_' + n.toString(16) + '.png';
-                        fs.writeFile(tmpfile, data, function (err) {
-                            if (err) assert.fail(err)
-                            else console.log('Verify the output at ' + tmpfile)
-                        });
-                    }
+                var data = stack.encodeSync();
+                var n = Math.floor(Math.random() * Math.pow(2,32));
+                var tmpfile = '/tmp/node-rfb_' + n.toString(16) + '.png';
+                fs.writeFile(tmpfile, data, function (err) {
+                    if (err) assert.fail(err)
+                    else console.log('# Verify the output at ' + tmpfile)
                 });
                 
                 setTimeout(function () {
