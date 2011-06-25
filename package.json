@@ -1,6 +1,6 @@
 {
     "name": "rfb",
-    "version": "0.1.3",
+    "version": "0.1.4",
     "description": "Implements the client-side of the rfb protocol that vnc uses",
     "author" : "James Halliday <mail@substack.net> (http://substack.net)",
     "directories": {
