@@ -1,7 +1,7 @@
 var assert = require('assert');
 
 var qemu = require('./lib/qemu');
-var rfb = require('rfb');
+var rfb = require('../');
 var png = require('png');
 var fs = require('fs');
 
@@ -23,8 +23,6 @@ exports.rects = function () {
             return acc;
         }, {})
     ;
-    
-    
     
     setTimeout(function () {
         var r = new rfb({ port : port });
@@ -54,15 +52,11 @@ exports.rects = function () {
     function sendKeys (r) {
         Seq.ap('xinit'.split(''))
             .seqEach_(function (next, key) {
-                r.once('raw', function fn (rect) {
-                    assert.ok(
-                        rect.width <= 32 && rect.height <= 32
-                        && rect.width > 0 && rect.height > 0,
-                        'rect at (' + rect.x + ',' + rect.y + ') '
-                        + 'is an unexpected size: '
-                        + rect.width + 'x' + rect.height
-                    );
-                    
+                r.on('raw', function fn (rect) {
+                    var ok = rect.width <= 32 && rect.height <= 32
+                        && rect.width > 0 && rect.height > 0;
+                    if (!ok) return;
+                    r.removeListener('raw', fn);
                     setTimeout(next, 250);
                 });
                 
@@ -80,7 +74,7 @@ exports.rects = function () {
                 
                 var toResize = setTimeout(function () {
                     assert.fail('never resized');
-                }, 15000);
+                }, 30 * 1000);
                 
                 r.once('desktopSize', function (dims) {
                     clearTimeout(toResize);

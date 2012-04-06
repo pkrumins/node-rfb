@@ -12,7 +12,7 @@
         "url": "http://github.com/substack/node-rfb.git"
     },
     "dependencies": {
-        "binary": "~0.2.6",
+        "binary": "~0.2.1",
         "put": "~0.0.6",
         "des": "~3.0.1"
     },
