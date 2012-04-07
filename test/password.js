@@ -4,6 +4,7 @@ var RFB = require('rfb');
 
 exports.password = function () {
     var port = Math.floor(Math.random() * (Math.pow(2,16) - 10000)) + 10000;
+    console.log('gvncviewer :' + (port - 5900));
     var q = qemu({ port : port, password : true });
     
     var to = 'monitor dimensions'
